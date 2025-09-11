@@ -1,0 +1,85 @@
+import random
+import numpy as np
+
+# Step 1: Define the problem (maximize f(x))
+def fitness_function(x):
+    return x * np.sin(10 * np.pi * x) + 1
+
+# Step 2: Initialize parameters
+POP_SIZE = 50
+MUTATION_RATE = 0.01
+CROSSOVER_RATE = 0.7
+GENERATIONS = 100
+CHROMOSOME_LENGTH = 16  
+
+def decode(chromosome):
+    decimal = int(chromosome, 2)
+    return decimal / (2**CHROMOSOME_LENGTH - 1)
+
+# Create random chromosome
+def random_chromosome():
+    return ''.join(random.choice('01') for _ in range(CHROMOSOME_LENGTH))
+
+# Step 3: Create initial population
+def initial_population():
+    return [random_chromosome() for _ in range(POP_SIZE)]
+
+# Step 4: Evaluate fitness
+def evaluate_population(population):
+    return [fitness_function(decode(chrom)) for chrom in population]
+
+# Step 5: Selection (roulette wheel)
+def select(population, fitnesses):
+    total_fitness = sum(fitnesses)
+    probs = [f / total_fitness for f in fitnesses]
+    selected = np.random.choice(population, size=2, replace=False, p=probs)
+    return selected
+
+# Step 6: Crossover
+def crossover(parent1, parent2):
+    if random.random() < CROSSOVER_RATE:
+        point = random.randint(1, CHROMOSOME_LENGTH - 1)
+        return (parent1[:point] + parent2[point:], parent2[:point] + parent1[point:])
+    return parent1, parent2
+
+# Step 7: Mutation
+def mutate(chromosome):
+    return ''.join(
+        bit if random.random() > MUTATION_RATE else ('1' if bit == '0' else '0')
+        for bit in chromosome
+    )
+
+# Step 8: Main GA loop
+def genetic_algorithm():
+    population = initial_population()
+    best_solution = None
+    best_fitness = float('-inf')
+
+    for gen in range(GENERATIONS):
+        fitnesses = evaluate_population(population)
+        new_population = []
+
+        # Track best solution
+        max_fit = max(fitnesses)
+        if max_fit > best_fitness:
+            best_fitness = max_fit
+            best_solution = population[fitnesses.index(max_fit)]
+
+        while len(new_population) < POP_SIZE:
+            parent1, parent2 = select(population, fitnesses)
+            offspring1, offspring2 = crossover(parent1, parent2)
+            offspring1 = mutate(offspring1)
+            offspring2 = mutate(offspring2)
+            new_population.extend([offspring1, offspring2])
+
+        population = new_population[:POP_SIZE]
+
+        if gen % 10 == 0 or gen == GENERATIONS - 1:
+            print(f"Generation {gen}: Best Fitness = {best_fitness:.5f}")
+
+    print("\nBest solution found:")
+    x_best = decode(best_solution)
+    print(f"x = {x_best:.5f}, f(x) = {fitness_function(x_best):.5f}")
+
+# Step 9: Run the algorithm
+genetic_algorithm()
