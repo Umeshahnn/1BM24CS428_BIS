@@ -1,0 +1,54 @@
+import numpy as np
+import math  # Import Python's math module
+
+# Objective function to minimize
+def f(x):
+    return (x - 3)**2
+
+# Levy flight function (simplified)
+def levy_flight(Lambda=1.5):
+    sigma = (math.gamma(1 + Lambda) * math.sin(math.pi * Lambda / 2) /
+             (math.gamma((1 + Lambda) / 2) * Lambda * 2 ** ((Lambda - 1) / 2))) ** (1 / Lambda)
+    u = np.random.normal(0, sigma)
+    v = np.random.normal(0, 1)
+    step = u / abs(v) ** (1 / Lambda)
+    return step
+
+# Parameters
+n = 4               # Number of nests
+Pa = 0.25           # Discovery probability
+MaxGen = 50         # Maximum iterations
+alpha = 0.01        # Step size scaling factor
+
+# Initialize nests randomly between -10 and 10
+nests = np.random.uniform(-10, 10, n)
+
+# Evaluate fitness of nests
+fitness = np.array([f(x) for x in nests])
+
+for gen in range(1, MaxGen + 1):
+    # Generate new solutions (cuckoos) via Levy flights
+    for i in range(n):
+        step = alpha * levy_flight()
+        new_solution = nests[i] + step
+        new_fitness = f(new_solution)
+
+        # If new solution is better, replace old one
+        if new_fitness < fitness[i]:
+            nests[i] = new_solution
+            fitness[i] = new_fitness
+
+    # Abandon some nests with probability Pa and replace
+    for i in range(n):
+        if np.random.rand() < Pa:
+            nests[i] = np.random.uniform(-10, 10)
+            fitness[i] = f(nests[i])
+
+    # Print every 5 generations
+    if gen % 5 == 0 or gen == 1:
+        best_index = np.argmin(fitness)
+        print(f"Gen {gen}: Best x = {nests[best_index]:.5f}, f(x) = {fitness[best_index]:.5f}")
+
+print("\nOptimization finished!")
+best_index = np.argmin(fitness)
+print(f"Best solution found: x = {nests[best_index]:.5f}, f(x) = {fitness[best_index]:.5f}")
