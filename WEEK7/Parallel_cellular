@@ -1,0 +1,87 @@
+import numpy as np
+from concurrent.futures import ThreadPoolExecutor, as_completed
+import time
+
+# ===========================
+# Configuration
+# ===========================
+GRID_SIZE = (50, 50)          # Grid dimensions (rows, cols)
+MAX_ITERATIONS = 100          # Number of iterations
+NUM_THREADS = 8               # Number of parallel workers
+
+# ===========================
+# Helper Functions
+# ===========================
+def get_neighbors(grid, x, y):
+    """Return the number of live neighbors for a given cell."""
+    rows, cols = grid.shape
+    count = 0
+    for i in [-1, 0, 1]:
+        for j in [-1, 0, 1]:
+            if i == 0 and j == 0:
+                continue
+            ni, nj = (x + i) % rows, (y + j) % cols  # wrap around (toroidal)
+            count += grid[ni, nj]
+    return count
+
+
+def transition_rule(cell_state, live_neighbors):
+    """Conway's Game of Life rule."""
+    if cell_state == 1:
+        if live_neighbors < 2 or live_neighbors > 3:
+            return 0  # cell dies
+        else:
+            return 1  # cell survives
+    else:
+        if live_neighbors == 3:
+            return 1  # cell becomes alive
+        else:
+            return 0  # cell stays dead
+
+
+def update_cell(grid, x, y):
+    """Compute the next state of a single cell."""
+    live_neighbors = get_neighbors(grid, x, y)
+    return (x, y, transition_rule(grid[x, y], live_neighbors))
+
+
+# ===========================
+# Main Parallel Cellular Algorithm
+# ===========================
+def parallel_cellular_algorithm():
+    grid = np.random.randint(2, size=GRID_SIZE)  # initialize random 0/1 grid
+
+    print("Initial State:")
+    print(grid)
+
+    for iteration in range(MAX_ITERATIONS):
+        new_grid = np.copy(grid)
+
+        # Parallel update using threads
+        with ThreadPoolExecutor(max_workers=NUM_THREADS) as executor:
+            futures = [executor.submit(update_cell, grid, i, j)
+                       for i in range(GRID_SIZE[0])
+                       for j in range(GRID_SIZE[1])]
+
+            for f in as_completed(futures):
+                x, y, new_state = f.result()
+                new_grid[x, y] = new_state
+
+        grid = new_grid
+
+        if iteration % 10 == 0:  # print every 10 iterations
+            print(f"\nIteration {iteration}:")
+            print(grid)
+
+    print("\nFinal State:")
+    print(grid)
+
+
+# ===========================
+# Run
+# ===========================
+if __name__ == "__main__":
+    start = time.time()
+    parallel_cellular_algorithm()
+    end = time.time()
+    print(f"\nExecution Time: {end - start:.2f} seconds")
